@@ -1,0 +1,22 @@
+.shiny-text {
+  display: inline-block;
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shiny-sweep var(--shine-speed, 3s) linear infinite;
+  animation-delay: var(--shine-delay, 0s);
+}
+
+.shiny-text.paused:hover {
+  animation-play-state: paused;
+}
+
+@keyframes shiny-sweep {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}

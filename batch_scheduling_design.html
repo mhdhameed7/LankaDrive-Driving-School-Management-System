@@ -1,0 +1,461 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f1f5f9;font-size:11px}
+.wrap{width:680px;padding:10px;background:#f1f5f9}
+.ttl{text-align:center;font-size:13px;font-weight:700;color:#0f2744;margin-bottom:2px}
+.sub{text-align:center;font-size:9.5px;color:#64748b;margin-bottom:9px}
+
+/* Feature cards */
+.fcards{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:9px}
+.fc{background:white;border-radius:8px;padding:8px 9px;border:.5px solid #e2e8f0}
+.fci{font-size:17px;margin-bottom:3px}
+.fct{font-size:9.5px;font-weight:700;color:#0f2744;margin-bottom:2px}
+.fcd{font-size:8px;color:#64748b;line-height:1.45}
+
+/* 2-col main grid */
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px}
+
+/* Card */
+.card{background:white;border-radius:8px;padding:10px;border:.5px solid #e2e8f0}
+.ch{font-size:11px;font-weight:700;color:#0f2744;display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:6px;border-bottom:.5px solid #f1f5f9}
+.chbadge{font-size:8px;font-weight:600;padding:1px 6px;border-radius:8px;background:#dbeafe;color:#1d4ed8;margin-left:auto}
+
+/* Form fields */
+.fg{margin-bottom:6px}
+.fl{font-size:8.5px;font-weight:600;color:#4b5563;margin-bottom:2px;display:flex;align-items:center;gap:3px}
+.req{font-size:7px;font-weight:700;background:#fef2f2;color:#dc2626;padding:0 3px;border-radius:2px}
+.opt{font-size:7px;font-weight:700;background:#f0fdf4;color:#16a34a;padding:0 3px;border-radius:2px}
+.fi{background:#f8fafc;border:.5px solid #cbd5e1;border-radius:5px;padding:5px 8px;font-size:9.5px;color:#0f2744;width:100%;display:block}
+.fi-name{display:flex;gap:4px}
+.fi-name .fi{flex:1}
+.gen-btn{background:#0f2744;color:white;border:none;border-radius:5px;padding:5px 8px;font-size:8.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+
+/* Chips */
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{padding:3px 9px;border-radius:10px;font-size:8.5px;font-weight:600;border:.5px solid transparent;cursor:pointer}
+.c-th{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
+.c-pr{background:#fef3c7;color:#b45309;border-color:#fde68a}
+.c-si{background:#ede9fe;color:#6d28d9;border-color:#c4b5fd}
+.c-mo{background:#0f2744;color:white;border-color:#0f2744}
+.c-ev{background:#f1f5f9;color:#374151;border-color:#cbd5e1}
+.c-we{background:#f1f5f9;color:#374151;border-color:#cbd5e1}
+.c-af{background:#f1f5f9;color:#374151;border-color:#cbd5e1}
+
+/* Days */
+.days{display:flex;gap:3px}
+.day{width:29px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:700;border:.5px solid #e2e8f0;color:#374151;cursor:pointer}
+.d-on{background:#0f2744;color:white;border-color:#0f2744}
+.d-off{background:#f8fafc;color:#9ca3af}
+
+/* Instructor option */
+.ins-opt{font-size:9.5px;color:#0f2744;background:#f8fafc;border:.5px solid #cbd5e1;border-radius:5px;padding:5px 8px;display:flex;align-items:center;gap:6px}
+.avail{color:#10b981;font-size:9px;font-weight:600;margin-left:auto}
+.dis{color:#9ca3af;font-size:9px;font-weight:600;margin-left:auto}
+
+/* Buttons */
+.btns{display:flex;gap:5px;margin-top:6px}
+.btn{border:none;border-radius:6px;padding:6px 13px;font-size:9.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px}
+.btn-navy{background:#0f2744;color:white}
+.btn-outline{background:white;color:#0f2744;border:.5px solid #0f2744}
+.btn-amber{background:#f59e0b;color:white}
+
+/* Alert box */
+.alert{display:flex;align-items:flex-start;gap:6px;padding:6px 8px;border-radius:6px;margin-top:6px;font-size:8.5px}
+.alert-ok{background:#f0fdf4;border:.5px solid #86efac;color:#166534}
+.alert-warn{background:#fefce8;border:.5px solid #fde68a;color:#92400e}
+.alert-err{background:#fef2f2;border:.5px solid #fecaca;color:#991b1b}
+
+/* Filter tabs */
+.tabs{display:flex;gap:4px;margin-bottom:7px}
+.tab{padding:3px 10px;border-radius:10px;font-size:8.5px;font-weight:500;border:.5px solid #e2e8f0;cursor:pointer;background:#f8fafc;color:#4b5563}
+.tab-on{background:#0f2744;color:white;border-color:#0f2744}
+
+/* Batch list rows */
+.blist{display:flex;flex-direction:column;gap:5px}
+.brow{border:.5px solid #e2e8f0;border-radius:7px;padding:8px 9px;background:white;border-left:3px solid transparent}
+.brow-th{border-left-color:#3b82f6}
+.brow-pr{border-left-color:#f59e0b}
+.brow-si{border-left-color:#8b5cf6}
+.brtop{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.brname{font-size:10px;font-weight:700;color:#0f2744}
+.btype{padding:1.5px 6px;border-radius:8px;font-size:7.5px;font-weight:700}
+.bt-th{background:#dbeafe;color:#1d4ed8}
+.bt-pr{background:#fef3c7;color:#b45309}
+.bt-si{background:#ede9fe;color:#6d28d9}
+.bstat{padding:1.5px 6px;border-radius:8px;font-size:7.5px;font-weight:600;margin-left:auto}
+.bs-act{background:#d1fae5;color:#065f46}
+.bs-up{background:#dbeafe;color:#1d4ed8}
+.bs-full{background:#fee2e2;color:#991b1b}
+.binfo{display:flex;flex-wrap:wrap;gap:8px}
+.bi{font-size:8.5px;color:#6b7280;display:flex;align-items:center;gap:2px}
+.caprow{display:flex;align-items:center;gap:6px;margin-top:4px}
+.caplabel{font-size:8px;color:#9ca3af}
+.capbar{flex:1;background:#f1f5f9;border-radius:3px;height:4px;overflow:hidden}
+.capfill{height:100%;border-radius:3px;transition:width .3s}
+.cap-g{background:#10b981}
+.cap-a{background:#f59e0b}
+.cap-r{background:#ef4444}
+.capn{font-size:8.5px;font-weight:600;color:#0f2744}
+.bact{display:flex;gap:3px;margin-left:auto}
+.bact-btn{font-size:8px;padding:2px 6px;border-radius:4px;border:.5px solid #e2e8f0;background:white;color:#374151;cursor:pointer;font-weight:500}
+
+/* Calendar */
+.cal{background:white;border-radius:8px;padding:9px;border:.5px solid #e2e8f0;margin-bottom:9px}
+.cal-title{font-size:11px;font-weight:700;color:#0f2744;margin-bottom:7px;display:flex;align-items:center;gap:8px}
+.cal-nav{display:flex;gap:4px;margin-left:auto}
+.cal-nav-btn{border:.5px solid #e2e8f0;background:white;border-radius:5px;padding:2px 8px;font-size:9px;cursor:pointer;color:#374151}
+.cal-grid{display:grid;grid-template-columns:58px repeat(7,1fr);gap:3px}
+.cal-dh{font-size:8.5px;font-weight:700;text-align:center;color:#374151;padding:3px 0;border-radius:4px;background:#f8fafc}
+.cal-th{font-size:8.5px;font-weight:700;text-align:center;color:#1d4ed8;padding:3px 0;border-radius:4px;background:#eff6ff}
+.cal-lbl{font-size:8px;font-weight:600;color:#64748b;padding:4px 5px;background:#f8fafc;border-radius:4px;display:flex;flex-direction:column;justify-content:center;line-height:1.3}
+.cal-lbl span{font-size:7px;color:#94a3b8;font-weight:400}
+.cal-cell{border-radius:4px;padding:3px;min-height:44px;background:#f9fafb;border:.5px solid #f1f5f9;display:flex;flex-direction:column;gap:2px}
+.cal-cell.today{border-color:#0f2744;background:#eff6ff}
+.sess{border-radius:3px;padding:2px 4px;font-size:7.5px;font-weight:600;line-height:1.3;cursor:pointer}
+.s-th{background:#dbeafe;color:#1d4ed8}
+.s-pr{background:#fef3c7;color:#b45309}
+.s-si{background:#ede9fe;color:#6d28d9}
+
+/* Rules */
+.rules{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+.rbox{border-radius:8px;padding:8px 9px;border:.5px solid transparent}
+.r-amber{background:#fffbeb;border-color:#fde68a}
+.r-green{background:#f0fdf4;border-color:#86efac}
+.r-blue{background:#eff6ff;border-color:#93c5fd}
+.rtitle{font-size:9.5px;font-weight:700;margin-bottom:4px}
+.r-amber .rtitle{color:#b45309}
+.r-green .rtitle{color:#166534}
+.r-blue .rtitle{color:#1d4ed8}
+.ritem{font-size:8.5px;line-height:1.7}
+.r-amber .ritem{color:#92400e}
+.r-green .ritem{color:#14532d}
+.r-blue .ritem{color:#1e3a8a}
+</style>
+
+<div class="wrap">
+
+<div class="ttl">📅 Batch Scheduling — Features & Design</div>
+<div class="sub">Sri Lanka Driving School — Complete Scheduling System for Theory, Practical & Simulation Sessions</div>
+
+<!-- ══ FEATURE CARDS ══ -->
+<div class="fcards">
+  <div class="fc">
+    <div class="fci">📋</div>
+    <div class="fct">Session Management</div>
+    <div class="fcd">Create Theory, Practical & Simulation batches. Set time slots, days & duration.</div>
+  </div>
+  <div class="fc">
+    <div class="fci">👨‍🏫</div>
+    <div class="fct">Instructor Assignment</div>
+    <div class="fcd">Assign instructors to batches. Auto-check availability. Track workload & hours.</div>
+  </div>
+  <div class="fc">
+    <div class="fci">🚗</div>
+    <div class="fct">Fleet Integration</div>
+    <div class="fcd">Auto-link vehicle to practical batch. Block double-booking. Show availability status.</div>
+  </div>
+  <div class="fc">
+    <div class="fci">📊</div>
+    <div class="fct">Progress Tracking</div>
+    <div class="fcd">Each session attended auto-updates student pipeline hours. Flags eligible students.</div>
+  </div>
+</div>
+
+<!-- ══ MAIN 2-COL GRID ══ -->
+<div class="mgrid">
+
+  <!-- LEFT: Create Batch Form -->
+  <div class="card">
+    <div class="ch">➕ Create New Batch<span class="chbadge">Form Design</span></div>
+
+    <div class="fg">
+      <div class="fl">Batch Name <span class="req">REQ</span></div>
+      <div class="fi-name">
+        <div class="fi">EVE-2025-04</div>
+        <button class="gen-btn">⚡ Auto</button>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="fg">
+        <div class="fl">License Class <span class="req">REQ</span></div>
+        <div class="fi">Class B — Motor Car</div>
+      </div>
+      <div class="fg">
+        <div class="fl">Max Students <span class="req">REQ</span></div>
+        <div class="fi">15 students</div>
+      </div>
+    </div>
+
+    <div class="fg">
+      <div class="fl">Session Type <span class="req">REQ</span></div>
+      <div class="chips">
+        <span class="chip c-th">📚 Theory</span>
+        <span class="chip c-pr">🚗 Practical</span>
+        <span class="chip c-si">🖥 Simulation</span>
+      </div>
+    </div>
+
+    <div class="fg">
+      <div class="fl">Time Slot <span class="req">REQ</span></div>
+      <div class="chips">
+        <span class="chip c-mo">🌅 Morning 6–9AM</span>
+        <span class="chip c-af">☀ Afternoon 12–3PM</span>
+        <span class="chip c-ev">🌆 Evening 5–8PM</span>
+        <span class="chip c-we">🗓 Weekend</span>
+      </div>
+    </div>
+
+    <div class="fg">
+      <div class="fl">Session Days <span class="req">REQ</span></div>
+      <div class="days">
+        <div class="day d-on">Mon</div>
+        <div class="day d-off">Tue</div>
+        <div class="day d-on">Wed</div>
+        <div class="day d-off">Thu</div>
+        <div class="day d-on">Fri</div>
+        <div class="day d-off">Sat</div>
+        <div class="day d-off">Sun</div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="fg">
+        <div class="fl">Start Date <span class="req">REQ</span></div>
+        <div class="fi">01 Jun 2025</div>
+      </div>
+      <div class="fg">
+        <div class="fl">End Date <span class="req">REQ</span></div>
+        <div class="fi">30 Aug 2025</div>
+      </div>
+    </div>
+
+    <div class="fg">
+      <div class="fl">Instructor <span class="req">REQ</span></div>
+      <div class="ins-opt">👨‍🏫 Mr. Amal Jayasena — Class B<span class="avail">✓ Available</span></div>
+    </div>
+
+    <div class="fg">
+      <div class="fl">Vehicle <span class="opt">Practical only</span></div>
+      <div class="ins-opt" style="color:#9ca3af">🚗 Select vehicle (Theory — not required)<span class="dis">N/A</span></div>
+    </div>
+
+    <div class="alert alert-ok">✅ <div>No scheduling conflicts. Mr. Amal is free Mon/Wed/Fri 6–9AM. Batch can be created.</div></div>
+    <div class="alert alert-warn" style="margin-top:4px">⚠ <div>Max 15 students for Theory. Max <b>5 students</b> for Practical (road safety rule).</div></div>
+
+    <div class="btns">
+      <button class="btn btn-navy">✓ Create Batch</button>
+      <button class="btn btn-amber">👥 Enroll Students</button>
+      <button class="btn btn-outline">Cancel</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Active Batches List -->
+  <div>
+    <div class="card" style="height:100%">
+      <div class="ch">📋 Active Batches<span class="chbadge" style="background:#d1fae5;color:#065f46">4 Running</span></div>
+      <div class="tabs">
+        <div class="tab tab-on">All</div>
+        <div class="tab">📚 Theory</div>
+        <div class="tab">🚗 Practical</div>
+        <div class="tab">🖥 Simulation</div>
+      </div>
+      <div class="blist">
+
+        <!-- Batch 1: Theory -->
+        <div class="brow brow-th">
+          <div class="brtop">
+            <div class="brname">EVE-2025-01</div>
+            <span class="btype bt-th">📚 Theory</span>
+            <span class="bstat bs-act">● Active</span>
+            <div class="bact"><button class="bact-btn">Edit</button><button class="bact-btn">View</button></div>
+          </div>
+          <div class="binfo">
+            <span class="bi">👨‍🏫 Mr. Amal J.</span>
+            <span class="bi">🌅 6–9 AM</span>
+            <span class="bi">📅 Mon·Wed·Fri</span>
+            <span class="bi">Class B</span>
+          </div>
+          <div class="caprow">
+            <span class="caplabel">Students</span>
+            <div class="capbar"><div class="capfill cap-a" style="width:80%"></div></div>
+            <span class="capn">12/15</span>
+          </div>
+        </div>
+
+        <!-- Batch 2: Practical FULL -->
+        <div class="brow brow-pr">
+          <div class="brtop">
+            <div class="brname">PRAC-2025-03</div>
+            <span class="btype bt-pr">🚗 Practical</span>
+            <span class="bstat bs-full">⛔ Full</span>
+            <div class="bact"><button class="bact-btn">Edit</button><button class="bact-btn">View</button></div>
+          </div>
+          <div class="binfo">
+            <span class="bi">👨‍🏫 Mr. Suresh K.</span>
+            <span class="bi">🌆 5–8 PM</span>
+            <span class="bi">📅 Mon·Thu</span>
+            <span class="bi">🚗 CAB-1234</span>
+          </div>
+          <div class="caprow">
+            <span class="caplabel">Students</span>
+            <div class="capbar"><div class="capfill cap-r" style="width:100%"></div></div>
+            <span class="capn">5/5</span>
+          </div>
+        </div>
+
+        <!-- Batch 3: Weekend Practical -->
+        <div class="brow brow-pr">
+          <div class="brtop">
+            <div class="brname">WKND-2025-02</div>
+            <span class="btype bt-pr">🚗 Practical</span>
+            <span class="bstat bs-act">● Active</span>
+            <div class="bact"><button class="bact-btn">Edit</button><button class="bact-btn">View</button></div>
+          </div>
+          <div class="binfo">
+            <span class="bi">👩‍🏫 Ms. Dilrukshi P.</span>
+            <span class="bi">🌅 6–9 AM</span>
+            <span class="bi">📅 Sat·Sun</span>
+            <span class="bi">🚗 CAP-5678</span>
+          </div>
+          <div class="caprow">
+            <span class="caplabel">Students</span>
+            <div class="capbar"><div class="capfill cap-g" style="width:60%"></div></div>
+            <span class="capn">3/5</span>
+          </div>
+        </div>
+
+        <!-- Batch 4: Simulation -->
+        <div class="brow brow-si">
+          <div class="brtop">
+            <div class="brname">SIM-2025-01</div>
+            <span class="btype bt-si">🖥 Simulation</span>
+            <span class="bstat bs-up">◷ Upcoming</span>
+            <div class="bact"><button class="bact-btn">Edit</button><button class="bact-btn">View</button></div>
+          </div>
+          <div class="binfo">
+            <span class="bi">👨‍🏫 Mr. Amal J.</span>
+            <span class="bi">🌆 5–8 PM</span>
+            <span class="bi">📅 Tue·Thu</span>
+            <span class="bi">Class B</span>
+          </div>
+          <div class="caprow">
+            <span class="caplabel">Students</span>
+            <div class="capbar"><div class="capfill cap-g" style="width:75%"></div></div>
+            <span class="capn">8/10</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ WEEKLY CALENDAR ══ -->
+<div class="cal">
+  <div class="cal-title">
+    📅 Weekly Session Calendar — Jun 2025
+    <div class="cal-nav">
+      <button class="cal-nav-btn">‹ Prev</button>
+      <button class="cal-nav-btn">Today</button>
+      <button class="cal-nav-btn">Next ›</button>
+    </div>
+  </div>
+  <div class="cal-grid">
+    <!-- Headers -->
+    <div></div>
+    <div class="cal-th">Mon<br><span style="font-size:7.5px;font-weight:400;color:#3b82f6">Jun 2</span></div>
+    <div class="cal-dh">Tue<br><span style="font-size:7.5px;font-weight:400;color:#6b7280">Jun 3</span></div>
+    <div class="cal-dh">Wed<br><span style="font-size:7.5px;font-weight:400;color:#6b7280">Jun 4</span></div>
+    <div class="cal-dh">Thu<br><span style="font-size:7.5px;font-weight:400;color:#6b7280">Jun 5</span></div>
+    <div class="cal-dh">Fri<br><span style="font-size:7.5px;font-weight:400;color:#6b7280">Jun 6</span></div>
+    <div class="cal-dh">Sat<br><span style="font-size:7.5px;font-weight:400;color:#6b7280">Jun 7</span></div>
+    <div class="cal-dh">Sun<br><span style="font-size:7.5px;font-weight:400;color:#6b7280">Jun 8</span></div>
+
+    <!-- Morning Row -->
+    <div class="cal-lbl">Morning<span>6–9 AM</span></div>
+    <div class="cal-cell today">
+      <div class="sess s-th">📚 EVE-01</div>
+      <div class="sess s-pr">🚗 PRAC-03</div>
+    </div>
+    <div class="cal-cell"></div>
+    <div class="cal-cell">
+      <div class="sess s-th">📚 EVE-01</div>
+    </div>
+    <div class="cal-cell"></div>
+    <div class="cal-cell">
+      <div class="sess s-th">📚 EVE-01</div>
+    </div>
+    <div class="cal-cell">
+      <div class="sess s-pr">🚗 WKND-02</div>
+    </div>
+    <div class="cal-cell">
+      <div class="sess s-th">📚 WKND-01</div>
+    </div>
+
+    <!-- Evening Row -->
+    <div class="cal-lbl">Evening<span>5–8 PM</span></div>
+    <div class="cal-cell today">
+      <div class="sess s-pr">🚗 PRAC-03</div>
+    </div>
+    <div class="cal-cell">
+      <div class="sess s-si">🖥 SIM-01</div>
+    </div>
+    <div class="cal-cell"></div>
+    <div class="cal-cell">
+      <div class="sess s-si">🖥 SIM-01</div>
+    </div>
+    <div class="cal-cell">
+      <div class="sess s-pr">🚗 PRAC-04</div>
+    </div>
+    <div class="cal-cell"></div>
+    <div class="cal-cell"></div>
+  </div>
+
+  <!-- Legend -->
+  <div style="display:flex;gap:10px;margin-top:7px;padding-top:6px;border-top:.5px solid #f1f5f9">
+    <span style="font-size:8.5px;color:#64748b;font-weight:600">Session Types:</span>
+    <span class="sess s-th" style="font-size:8px">📚 Theory</span>
+    <span class="sess s-pr" style="font-size:8px">🚗 Practical</span>
+    <span class="sess s-si" style="font-size:8px">🖥 Simulation</span>
+    <span style="margin-left:auto;font-size:8px;color:#3b82f6;font-weight:600;background:#eff6ff;padding:2px 6px;border-radius:4px">■ Today = Mon Jun 2</span>
+  </div>
+</div>
+
+<!-- ══ SL BUSINESS RULES ══ -->
+<div class="rules">
+  <div class="rbox r-amber">
+    <div class="rtitle">🇱🇰 Minimum Training Hours (DMT)</div>
+    <div class="ritem">
+      📚 <b>Theory:</b> Min 8 hours total<br>
+      🚗 <b>Practical:</b> Min 15 sessions<br>
+      🖥 <b>Simulation:</b> Recommended 3 sessions<br>
+      ⏱ All must complete before Learner Permit expires (6 months from issue).<br>
+      🚦 Max <b>5 students per practical batch</b> (road safety rule).
+    </div>
+  </div>
+  <div class="rbox r-green">
+    <div class="rtitle">✅ Conflict Detection Logic</div>
+    <div class="ritem">
+      🔴 <b>Block</b> if instructor is assigned to another batch at same time/day.<br>
+      🔴 <b>Block</b> if vehicle is already booked for another practical session.<br>
+      🟡 <b>Warn</b> if instructor has &gt;6 sessions that week (overload).<br>
+      🟡 <b>Warn</b> if batch end date is after student permit expiry.<br>
+      🟢 <b>Allow</b> if all checks pass — show green confirmation.
+    </div>
+  </div>
+  <div class="rbox r-blue">
+    <div class="rtitle">🔄 Auto-Actions on Session Complete</div>
+    <div class="ritem">
+      ✅ Attendance marked → theory/practical hours auto-updated<br>
+      ✅ Hours reached minimum → student auto-flagged "Eligible"<br>
+      ✅ Stage 5 (Training) → Stage 6 (Eligible) auto-advanced<br>
+      ✅ Email sent to student: session confirmed + hours progress<br>
+      ✅ Admin dashboard updated with batch progress %
+    </div>
+  </div>
+</div>
+
+</div>
