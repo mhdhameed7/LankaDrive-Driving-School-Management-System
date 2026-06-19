@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { initializeDatabase, handleIpcRequests } from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -9,6 +10,33 @@ const __dirname = path.dirname(__filename);
 // Initialize DB and IPC
 initializeDatabase();
 handleIpcRequests(ipcMain);
+
+// IPC Handler for PDF printing
+ipcMain.handle('print-to-pdf', async (event, options = {}) => {
+  const webContents = event.sender;
+  const win = BrowserWindow.fromWebContents(webContents);
+  try {
+    const data = await webContents.printToPDF({
+      pageSize: 'A4',
+      printBackground: true,
+      landscape: options.landscape || false,
+    });
+    const { filePath } = await dialog.showSaveDialog(win, {
+      title: 'Save PDF',
+      defaultPath: options.defaultName || 'report.pdf',
+      filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+    });
+    if (filePath) {
+      await fs.promises.writeFile(filePath, data);
+      return { success: true, filePath };
+    }
+    return { success: false, cancelled: true };
+  } catch (error) {
+    console.error('Failed to print to PDF:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 
 function createWindow() {
   const mainWindow = new BrowserWindow({

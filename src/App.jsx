@@ -13,7 +13,9 @@ import InstructorProfile from './pages/InstructorProfile';
 import Vehicles from './pages/Vehicles';
 import Attendance from './pages/Attendance';
 import Payments from './pages/Payments';
-
+import Exams from './pages/Exams';
+import Reports from './pages/Reports';
+import Reminders from './pages/Reminders';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -48,9 +50,9 @@ function App() {
           <Route path="instructors/:id" element={<InstructorProfile />} />
           <Route path="attendance" element={<Attendance />} />
           <Route path="payments" element={<Payments />} />
-          <Route path="exams" element={<div className="p-6">Exams Module Coming Soon</div>} />
-          <Route path="reports" element={<div className="p-6">Reports Module Coming Soon</div>} />
-          <Route path="messages" element={<div className="p-6">Messages Module Coming Soon</div>} />
+          <Route path="exams" element={<Exams />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="reminders" element={<Reminders />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

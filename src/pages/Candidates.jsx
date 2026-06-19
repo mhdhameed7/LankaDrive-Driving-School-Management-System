@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Search, Plus, Filter, MoreVertical, FileText, CheckCircle2, UserPlus, FileCheck, ArrowRight, X, User, Car
 } from 'lucide-react';
@@ -11,6 +11,7 @@ const Candidates = () => {
   const [wizardStep, setWizardStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Wizard Form State
   const [formData, setFormData] = useState({
@@ -56,6 +57,15 @@ const Candidates = () => {
   useEffect(() => {
     fetchCandidates();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'add') {
+      setWizardStep(1);
+      setShowWizard(true);
+      navigate('/candidates', { replace: true });
+    }
+  }, [location, navigate]);
 
   const handleNextStep = async (e) => {
     e.preventDefault();

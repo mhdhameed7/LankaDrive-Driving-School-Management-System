@@ -35,6 +35,23 @@ export const initializeDatabase = async () => {
     securityAnswer TEXT
   )`);
 
+  // Settings Table
+  db.run(`CREATE TABLE IF NOT EXISTS Settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  )`);
+
+  // Reminders Table
+  db.run(`CREATE TABLE IF NOT EXISTS Reminders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    description TEXT,
+    date TEXT,
+    type TEXT,
+    candidateId TEXT,
+    status TEXT DEFAULT 'Pending'
+  )`);
+
   // Candidates Table (replaces Students)
   db.run(`CREATE TABLE IF NOT EXISTS Candidates (
     id TEXT PRIMARY KEY,
@@ -346,6 +363,21 @@ export const initializeDatabase = async () => {
     FOREIGN KEY (staffId) REFERENCES Staff(id)
   )`);
 
+  // Payments
+  db.run(`CREATE TABLE IF NOT EXISTS Payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    receiptNo TEXT UNIQUE NOT NULL,
+    candidateId TEXT NOT NULL,
+    paymentDate TEXT NOT NULL,
+    amount REAL NOT NULL,
+    totalFee REAL DEFAULT 50000,
+    paymentMethod TEXT DEFAULT 'Cash',
+    referenceNumber TEXT,
+    remarks TEXT,
+    paymentStage TEXT DEFAULT 'First Payment',
+    FOREIGN KEY (candidateId) REFERENCES Candidates(id)
+  )`);
+
   // Seed staff registry if empty
   const staffCountQuery = db.exec("SELECT COUNT(*) FROM Staff");
   const staffCount = staffCountQuery.length > 0 ? staffCountQuery[0].values[0][0] : 0;
@@ -365,6 +397,17 @@ export const initializeDatabase = async () => {
   const adminQuery = db.exec("SELECT * FROM Users WHERE username = 'admin'");
   if (adminQuery.length === 0) {
     db.run("INSERT INTO Users (username, password, role) VALUES ('admin', 'password123', 'admin')");
+    saveDatabase();
+  }
+
+  // Seed default settings if empty
+  const settingsCountQuery = db.exec("SELECT COUNT(*) FROM Settings");
+  const settingsCount = settingsCountQuery.length > 0 ? settingsCountQuery[0].values[0][0] : 0;
+  if (settingsCount === 0) {
+    db.run("INSERT INTO Settings (key, value) VALUES ('standard_fee', '50000')");
+    db.run("INSERT INTO Settings (key, value) VALUES ('premium_fee', '75000')");
+    db.run("INSERT INTO Settings (key, value) VALUES ('express_fee', '60000')");
+    db.run("INSERT INTO Settings (key, value) VALUES ('exam_reschedule_fee', '1500')");
     saveDatabase();
   }
 
@@ -449,9 +492,39 @@ export const initializeDatabase = async () => {
     stmt.free();
     saveDatabase();
   }
+
+  // Seed sample payments
+  const payCountQuery = db.exec('SELECT COUNT(*) FROM Payments');
+  const payCount = payCountQuery.length > 0 ? payCountQuery[0].values[0][0] : 0;
+  if (payCount === 0) {
+    const payments = [
+      ['REC-2025-001', 'CND-2025-001', '2025-01-10', 15000, 50000, 'Cash', 'REF-1001', 'Initial registration fee', 'First Payment'],
+      ['REC-2025-002', 'CND-2025-002', '2025-01-12', 25000, 75000, 'Bank Transfer', 'REF-87654321', 'Midterm installment', 'Second Payment'],
+      ['REC-2025-003', 'CND-2025-003', '2025-01-05', 50000, 50000, 'Cash', 'REF-123456', 'Full fee payment', 'Final Payment'],
+    ];
+    const stmt = db.prepare(`INSERT INTO Payments (receiptNo, candidateId, paymentDate, amount, totalFee, paymentMethod, referenceNumber, remarks, paymentStage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    for (const p of payments) { stmt.run(p); }
+    stmt.free();
+    saveDatabase();
+  }
 };
 
 // Helper
+const getCourseFee = (trainingPackage, fallback = 50000) => {
+  try {
+    const key = `${String(trainingPackage || '').toLowerCase()}_fee`;
+    const res = db.exec(`SELECT value FROM Settings WHERE key = '${key}'`);
+    if (res.length > 0 && res[0].values.length > 0) {
+      return parseFloat(res[0].values[0][0]);
+    }
+  } catch (e) {
+    console.error("Failed to fetch course fee from DB", e);
+  }
+  const PACKAGE_FEES = { standard: 50000, premium: 75000, express: 60000 };
+  const resolvedKey = String(trainingPackage || '').toLowerCase();
+  return PACKAGE_FEES[resolvedKey] || fallback;
+};
+
 const resultToObjects = (res) => {
   if (!res || res.length === 0) return [];
   const columns = res[0].columns;
@@ -568,6 +641,7 @@ export const handleIpcRequests = (ipcMain) => {
       db.run(`DELETE FROM PracticalExams WHERE candidateId = '${id}'`);
       db.run(`DELETE FROM TrainingSessions WHERE candidateId = '${id}'`);
       db.run(`DELETE FROM Documents WHERE candidateId = '${id}'`);
+      db.run(`DELETE FROM Payments WHERE candidateId = '${id}'`);
       saveDatabase();
       return { success: true };
     } catch (err) { return { success: false, message: err.message }; }
@@ -598,7 +672,18 @@ export const handleIpcRequests = (ipcMain) => {
   });
 
   ipcMain.handle('get-written-exams', (event, candidateId) => {
-    return resultToObjects(db.exec(`SELECT * FROM WrittenExams WHERE candidateId = '${candidateId}'`));
+    if (candidateId) {
+      return resultToObjects(db.exec(`SELECT w.*, c.name as candidateName FROM WrittenExams w JOIN Candidates c ON w.candidateId = c.id WHERE w.candidateId = '${candidateId}' ORDER BY w.examDate DESC`));
+    }
+    return resultToObjects(db.exec(`SELECT w.*, c.name as candidateName FROM WrittenExams w JOIN Candidates c ON w.candidateId = c.id ORDER BY w.examDate DESC`));
+  });
+
+  ipcMain.handle('update-written-exam', (event, { id, result, score, notes }) => {
+    try {
+      db.run(`UPDATE WrittenExams SET result=?, score=?, notes=? WHERE id=?`, [result, score, notes, id]);
+      saveDatabase();
+      return { success: true };
+    } catch (err) { return { success: false, message: err.message }; }
   });
 
   // ── Learner Permits ──
@@ -626,7 +711,18 @@ export const handleIpcRequests = (ipcMain) => {
   });
 
   ipcMain.handle('get-practical-exams', (event, candidateId) => {
-    return resultToObjects(db.exec(`SELECT * FROM PracticalExams WHERE candidateId = '${candidateId}'`));
+    if (candidateId) {
+      return resultToObjects(db.exec(`SELECT p.*, c.name as candidateName FROM PracticalExams p JOIN Candidates c ON p.candidateId = c.id WHERE p.candidateId = '${candidateId}' ORDER BY p.examDate DESC`));
+    }
+    return resultToObjects(db.exec(`SELECT p.*, c.name as candidateName FROM PracticalExams p JOIN Candidates c ON p.candidateId = c.id ORDER BY p.examDate DESC`));
+  });
+
+  ipcMain.handle('update-practical-exam', (event, { id, result, examinerNotes, licenseNumber }) => {
+    try {
+      db.run(`UPDATE PracticalExams SET result=?, examinerNotes=?, licenseNumber=? WHERE id=?`, [result, examinerNotes, licenseNumber, id]);
+      saveDatabase();
+      return { success: true };
+    } catch (err) { return { success: false, message: err.message }; }
   });
 
   // ── Training Sessions ──
@@ -681,13 +777,19 @@ export const handleIpcRequests = (ipcMain) => {
 
   ipcMain.handle('get-next-receipt-number', () => {
     const year = new Date().getFullYear();
-    const res = db.exec(`SELECT receiptNumber FROM Candidates WHERE receiptNumber LIKE 'REC-${year}-%' ORDER BY receiptNumber DESC LIMIT 1`);
+    const candidateRes = db.exec(`SELECT receiptNumber FROM Candidates WHERE receiptNumber LIKE 'REC-${year}-%' ORDER BY receiptNumber DESC LIMIT 1`);
+    const paymentRes = db.exec(`SELECT receiptNo FROM Payments WHERE receiptNo LIKE 'REC-${year}-%' ORDER BY receiptNo DESC LIMIT 1`);
     let next = 1;
-    if (res.length > 0 && res[0].values.length > 0) {
-      const last = res[0].values[0][0];
-      const num = parseInt(last.split('-')[2], 10);
-      if (!isNaN(num)) next = num + 1;
-    }
+    const extractNum = (val) => {
+      if (!val) return 0;
+      const num = parseInt(String(val).split('-')[2], 10);
+      return isNaN(num) ? 0 : num;
+    };
+    const candidateNum = candidateRes.length > 0 && candidateRes[0].values.length > 0
+      ? extractNum(candidateRes[0].values[0][0]) : 0;
+    const paymentNum = paymentRes.length > 0 && paymentRes[0].values.length > 0
+      ? extractNum(paymentRes[0].values[0][0]) : 0;
+    next = Math.max(candidateNum, paymentNum) + 1;
     return `REC-${year}-${String(next).padStart(3, '0')}`;
   });
 
@@ -1341,5 +1443,361 @@ export const handleIpcRequests = (ipcMain) => {
       }
       return { success: false, message: 'Invalid report type' };
     } catch (err) { return { success: false, message: err.message }; }
+  });
+
+  // ── Payments ──
+  ipcMain.handle('get-payments', () => {
+    return resultToObjects(db.exec(`
+      SELECT p.*, c.name as candidateName, c.trainingPackage, c.registeredDate
+      FROM Payments p
+      JOIN Candidates c ON p.candidateId = c.id
+      ORDER BY p.paymentDate DESC, p.id DESC
+    `));
+  });
+
+  ipcMain.handle('add-payment', (event, payment) => {
+    try {
+      db.run(`INSERT INTO Payments (receiptNo, candidateId, paymentDate, amount, totalFee, paymentMethod, referenceNumber, remarks, paymentStage)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [payment.receiptNo, payment.candidateId, payment.paymentDate, payment.amount, payment.totalFee,
+          payment.paymentMethod, payment.referenceNumber || '', payment.remarks || '', payment.paymentStage]);
+      saveDatabase();
+      return { success: true };
+    } catch (err) { return { success: false, message: err.message }; }
+  });
+
+  ipcMain.handle('update-payment', (event, payment) => {
+    try {
+      db.run(`UPDATE Payments SET candidateId=?, paymentDate=?, amount=?, totalFee=?, paymentMethod=?, referenceNumber=?, remarks=?, paymentStage=? WHERE id=?`,
+        [payment.candidateId, payment.paymentDate, payment.amount, payment.totalFee, payment.paymentMethod,
+          payment.referenceNumber || '', payment.remarks || '', payment.paymentStage, payment.id]);
+      saveDatabase();
+      return { success: true };
+    } catch (err) { return { success: false, message: err.message }; }
+  });
+
+  ipcMain.handle('delete-payment', (event, id) => {
+    try {
+      db.run('DELETE FROM Payments WHERE id = ?', [id]);
+      saveDatabase();
+      return { success: true };
+    } catch (err) { return { success: false, message: err.message }; }
+  });
+
+  ipcMain.handle('get-payment-stats', () => {
+    const today = new Date().toISOString().split('T')[0];
+    const totalRes = db.exec('SELECT COALESCE(SUM(amount), 0) FROM Payments');
+    const todayRes = db.exec(`SELECT COALESCE(SUM(amount), 0) FROM Payments WHERE paymentDate = '${today}'`);
+    const candidates = resultToObjects(db.exec('SELECT id, name, trainingPackage, registeredDate FROM Candidates'));
+    const payments = resultToObjects(db.exec('SELECT candidateId, amount, totalFee FROM Payments'));
+
+    const byCandidate = {};
+    payments.forEach((p) => {
+      if (!byCandidate[p.candidateId]) byCandidate[p.candidateId] = { totalPaid: 0, totalFee: p.totalFee };
+      byCandidate[p.candidateId].totalPaid += p.amount;
+      byCandidate[p.candidateId].totalFee = p.totalFee;
+    });
+
+    let pendingAmount = 0;
+    let paidCandidates = 0;
+    candidates.forEach((c) => {
+      const fee = byCandidate[c.id]?.totalFee || getCourseFee(c.trainingPackage);
+      const paid = byCandidate[c.id]?.totalPaid || 0;
+      const due = Math.max(0, fee - paid);
+      pendingAmount += due;
+      if (paid >= fee) paidCandidates += 1;
+    });
+
+    return {
+      totalRevenue: totalRes.length > 0 ? totalRes[0].values[0][0] : 0,
+      todayCollection: todayRes.length > 0 ? todayRes[0].values[0][0] : 0,
+      pendingAmount,
+      paidCandidates,
+    };
+  });
+
+  ipcMain.handle('get-payment-balances', () => {
+    const candidates = resultToObjects(db.exec('SELECT id, name, trainingPackage, registeredDate FROM Candidates ORDER BY name ASC'));
+    const payments = resultToObjects(db.exec('SELECT candidateId, amount, totalFee, paymentDate FROM Payments ORDER BY paymentDate ASC'));
+    const overdueDays = 30;
+    const today = new Date();
+
+    return candidates.map((c) => {
+      const candidatePayments = payments.filter((p) => p.candidateId === c.id);
+      const totalPaid = candidatePayments.reduce((sum, p) => sum + p.amount, 0);
+      const totalFee = candidatePayments.length > 0
+        ? candidatePayments[candidatePayments.length - 1].totalFee
+        : getCourseFee(c.trainingPackage);
+      const remaining = Math.max(0, totalFee - totalPaid);
+      let status = 'Pending';
+      if (totalPaid >= totalFee) status = 'Paid';
+      else if (totalPaid > 0) status = 'Partially Paid';
+      if (remaining > 0 && c.registeredDate) {
+        const registered = new Date(c.registeredDate);
+        const daysSince = Math.floor((today - registered) / (1000 * 60 * 60 * 24));
+        if (daysSince > overdueDays) status = 'Overdue';
+      }
+      const stages = ['First Payment', 'Second Payment', 'Final Payment'];
+      const nextStage = stages[candidatePayments.length] || 'Final Payment';
+      return {
+        candidateId: c.id,
+        candidateName: c.name,
+        totalFee,
+        totalPaid,
+        remaining,
+        status,
+        nextStage,
+        dueAmount: remaining,
+        installmentCount: candidatePayments.length,
+      };
+    });
+  });
+
+  ipcMain.handle('get-payment-reports', (event, { type, date, month }) => {
+    try {
+      if (type === 'daily') {
+        const targetDate = date || new Date().toISOString().split('T')[0];
+        const data = resultToObjects(db.exec(`
+          SELECT p.*, c.name as candidateName
+          FROM Payments p
+          JOIN Candidates c ON p.candidateId = c.id
+          WHERE p.paymentDate = '${targetDate}'
+          ORDER BY p.id DESC
+        `));
+        const total = data.reduce((sum, row) => sum + row.amount, 0);
+        return { success: true, data, total };
+      }
+      if (type === 'monthly') {
+        const targetMonth = month || new Date().toISOString().slice(0, 7);
+        const data = resultToObjects(db.exec(`
+          SELECT p.*, c.name as candidateName
+          FROM Payments p
+          JOIN Candidates c ON p.candidateId = c.id
+          WHERE p.paymentDate LIKE '${targetMonth}%'
+          ORDER BY p.paymentDate DESC
+        `));
+        const total = data.reduce((sum, row) => sum + row.amount, 0);
+        return { success: true, data, total };
+      }
+      if (type === 'outstanding') {
+        const balances = resultToObjects(db.exec(`
+          SELECT c.id as candidateId, c.name as candidateName, c.trainingPackage, c.registeredDate,
+            COALESCE(SUM(p.amount), 0) as totalPaid,
+            COALESCE(MAX(p.totalFee), 0) as recordedFee
+          FROM Candidates c
+          LEFT JOIN Payments p ON c.id = p.candidateId
+          GROUP BY c.id
+          ORDER BY c.name ASC
+        `)).map((row) => {
+          const totalFee = row.recordedFee > 0 ? row.recordedFee : getCourseFee(row.trainingPackage);
+          const remaining = Math.max(0, totalFee - row.totalPaid);
+          return { ...row, totalFee, remaining };
+        }).filter((row) => row.remaining > 0);
+        const total = balances.reduce((sum, row) => sum + row.remaining, 0);
+        return { success: true, data: balances, total };
+      }
+      return { success: false, message: 'Invalid report type' };
+    } catch (err) { return { success: false, message: err.message }; }
+  });
+
+  // ── Settings ──
+  ipcMain.handle('get-settings', () => {
+    try {
+      return resultToObjects(db.exec('SELECT * FROM Settings'));
+    } catch (err) {
+      console.error("Failed to get settings", err);
+      return [];
+    }
+  });
+
+  ipcMain.handle('update-setting', (event, { key, value }) => {
+    try {
+      db.run('INSERT INTO Settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?', [key, value, value]);
+      saveDatabase();
+      return { success: true };
+    } catch (err) {
+      console.error("Failed to update setting", err);
+      return { success: false, message: err.message };
+    }
+  });
+
+  // ── Reminders ──
+  ipcMain.handle('get-reminders', () => {
+    try {
+      // 1. Custom Reminders
+      const custom = resultToObjects(db.exec('SELECT r.*, c.name as candidateName, c.phone as candidatePhone FROM Reminders r LEFT JOIN Candidates c ON r.candidateId = c.id ORDER BY r.date ASC'));
+      
+      // 2. Fetch Candidates and Payments to calculate overdue balances
+      const candidates = resultToObjects(db.exec('SELECT id, name, phone, trainingPackage, registeredDate FROM Candidates'));
+      const payments = resultToObjects(db.exec('SELECT candidateId, amount, totalFee FROM Payments'));
+      
+      const today = new Date();
+      const overdueDays = 30;
+      
+      const paymentReminders = candidates.map(c => {
+        const candidatePayments = payments.filter(p => p.candidateId === c.id);
+        const totalPaid = candidatePayments.reduce((sum, p) => sum + p.amount, 0);
+        const totalFee = candidatePayments.length > 0 ? candidatePayments[candidatePayments.length - 1].totalFee : getCourseFee(c.trainingPackage);
+        const remaining = Math.max(0, totalFee - totalPaid);
+        if (remaining > 0) {
+          const registered = c.registeredDate ? new Date(c.registeredDate) : new Date();
+          const daysSince = Math.floor((today - registered) / (1000 * 60 * 60 * 24));
+          const isOverdue = daysSince > overdueDays;
+          
+          const stages = ['First Payment', 'Second Payment', 'Final Payment'];
+          const nextStage = stages[candidatePayments.length] || 'Final Payment';
+          
+          let dueDateStr = '';
+          if (c.registeredDate) {
+            const dueDate = new Date(registered);
+            dueDate.setDate(dueDate.getDate() + 30);
+            dueDateStr = dueDate.toISOString().split('T')[0];
+          }
+          
+          return {
+            id: `payment-${c.id}`,
+            title: `Payment: ${c.name}`,
+            description: `${isOverdue ? 'OVERDUE: ' : ''}Outstanding balance of LKR ${remaining} due for ${nextStage}.`,
+            date: dueDateStr || c.registeredDate,
+            type: 'Payment',
+            candidateId: c.id,
+            candidateName: c.name,
+            candidatePhone: c.phone || '',
+            status: isOverdue ? 'Overdue' : 'Pending',
+            meta: { remaining, nextStage, registeredDate: c.registeredDate }
+          };
+        }
+        return null;
+      }).filter(Boolean);
+
+      // 3. Written Exams Reminders (upcoming)
+      const writtenExams = resultToObjects(db.exec(`
+        SELECT w.*, c.name as candidateName, c.phone as candidatePhone 
+        FROM WrittenExams w 
+        JOIN Candidates c ON w.candidateId = c.id 
+        WHERE w.examDate >= date('now', '-1 day') AND (w.result IS NULL OR w.result = 'Pending' OR w.result = '')
+      `));
+      const writtenReminders = writtenExams.map(ex => ({
+        id: `written-${ex.id}`,
+        title: `Written Exam: ${ex.candidateName}`,
+        description: `Written Exam (Attempt #${ex.attemptNumber}) scheduled at ${ex.examCenter || 'Center'}.`,
+        date: ex.examDate,
+        type: 'Exam',
+        candidateId: ex.candidateId,
+        candidateName: ex.candidateName,
+        candidatePhone: ex.candidatePhone || '',
+        status: 'Pending',
+        meta: { attempt: ex.attemptNumber, center: ex.examCenter, examType: 'Theory' }
+      }));
+
+      // 4. Practical Exams Reminders (upcoming)
+      const practicalExams = resultToObjects(db.exec(`
+        SELECT p.*, c.name as candidateName, c.phone as candidatePhone 
+        FROM PracticalExams p 
+        JOIN Candidates c ON p.candidateId = c.id 
+        WHERE p.examDate >= date('now', '-1 day') AND (p.result IS NULL OR p.result = 'Pending' OR p.result = '')
+      `));
+      const practicalReminders = practicalExams.map(ex => ({
+        id: `practical-${ex.id}`,
+        title: `Trial Exam: ${ex.candidateName}`,
+        description: `Practical Trial Exam (Attempt #${ex.attemptNumber}) scheduled at ${ex.examCenter || 'Center'}.`,
+        date: ex.examDate,
+        type: 'Exam',
+        candidateId: ex.candidateId,
+        candidateName: ex.candidateName,
+        candidatePhone: ex.candidatePhone || '',
+        status: 'Pending',
+        meta: { attempt: ex.attemptNumber, center: ex.examCenter, examType: 'Practical' }
+      }));
+
+      // 5. Vehicle Expiry Reminders
+      const vehicles = resultToObjects(db.exec("SELECT * FROM Vehicles WHERE status = 'Active'"));
+      const vehicleReminders = [];
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+      
+      vehicles.forEach(v => {
+        const checkExpiry = (expiryDateStr, label) => {
+          if (!expiryDateStr) return;
+          const exp = new Date(expiryDateStr);
+          if (exp <= thirtyDaysFromNow) {
+            const daysLeft = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+            vehicleReminders.push({
+              id: `vehicle-${v.id}-${label.replace(/\s+/g, '_')}`,
+              title: `Vehicle: ${v.plateNumber} (${v.make})`,
+              description: `${label} expires on ${expiryDateStr} (${daysLeft < 0 ? 'Expired' : `${daysLeft} days left`}).`,
+              date: expiryDateStr,
+              type: 'Vehicle',
+              candidateId: null,
+              candidateName: '',
+              candidatePhone: '',
+              status: daysLeft < 0 ? 'Overdue' : 'Pending',
+              meta: { plateNumber: v.plateNumber, make: v.make, model: v.model, expiryType: label }
+            });
+          }
+        };
+
+        checkExpiry(v.revenueLicenseExpiry, 'Revenue License');
+        checkExpiry(v.insuranceExpiry, 'Insurance Policy');
+        checkExpiry(v.drivingSchoolLicenseExpiry, 'Driving School License');
+        checkExpiry(v.emissionTestExpiry, 'Emission Test');
+      });
+
+      return [...custom, ...paymentReminders, ...writtenReminders, ...practicalReminders, ...vehicleReminders];
+    } catch (err) {
+      console.error("Failed to generate reminders", err);
+      return [];
+    }
+  });
+
+  ipcMain.handle('add-reminder', (event, { title, description, date, type, candidateId }) => {
+    try {
+      db.run('INSERT INTO Reminders (title, description, date, type, candidateId) VALUES (?, ?, ?, ?, ?)', [title, description, date, type, candidateId]);
+      saveDatabase();
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
+  });
+
+  ipcMain.handle('delete-reminder', (event, id) => {
+    try {
+      db.run(`DELETE FROM Reminders WHERE id = ?`, [id]);
+      saveDatabase();
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
+  });
+
+  ipcMain.handle('update-reminder-status', (event, { id, status }) => {
+    try {
+      db.run(`UPDATE Reminders SET status = ? WHERE id = ?`, [status, id]);
+      saveDatabase();
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
+  });
+
+  // ── Change Password ──
+  ipcMain.handle('change-password', (event, { username, oldPassword, newPassword }) => {
+    try {
+      const stmt = db.prepare('SELECT * FROM Users WHERE username = ? AND password = ?');
+      stmt.bind([username, oldPassword]);
+      let user = null;
+      if (stmt.step()) user = stmt.getAsObject();
+      stmt.free();
+      
+      if (!user) {
+        return { success: false, message: 'Incorrect current password.' };
+      }
+      
+      db.run('UPDATE Users SET password = ? WHERE username = ?', [newPassword, username]);
+      saveDatabase();
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
   });
 };

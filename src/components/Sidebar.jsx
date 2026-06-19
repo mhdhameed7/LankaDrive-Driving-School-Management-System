@@ -28,7 +28,7 @@ const Sidebar = ({ user, onLogout }) => {
     { name: 'Payments', path: '/payments', icon: <CreditCard size={20} /> },
     { name: 'Exams', path: '/exams', icon: <Award size={20} /> },
     { name: 'Reports', path: '/reports', icon: <BarChart3 size={20} /> },
-    { name: 'Messages', path: '/messages', icon: <Bell size={20} /> },
+    { name: 'Reminders', path: '/reminders', icon: <Bell size={20} /> },
     { name: 'Settings', path: '/settings', icon: <Settings size={20} /> },
   ];
 

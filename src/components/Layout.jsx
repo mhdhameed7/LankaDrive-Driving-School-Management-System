@@ -7,7 +7,7 @@ const Layout = ({ user, onLogout }) => {
   const location = useLocation();
 
   // Pages that need full-height, no-padding layout
-  const fullHeightPages = ['/batches', '/vehicles', '/instructors', '/attendance'];
+  const fullHeightPages = ['/batches', '/vehicles', '/instructors', '/attendance', '/exams', '/reports'];
   const isFullHeight = fullHeightPages.some(path => location.pathname.includes(path));
 
   return (

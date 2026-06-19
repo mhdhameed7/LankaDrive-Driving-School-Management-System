@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   CalendarDays, Plus, List, Grid, Users, Car, UserSquare2, 
   X, CheckCircle2, AlertCircle, Clock, Edit, Trash2, Search, 
@@ -13,18 +14,54 @@ const SESSION_TYPE_CONFIG = {
 };
 
 const TIME_SLOT_CONFIG = {
-  'Morning': { label: 'Morning (6am-9am)', color: 'bg-amber-100 text-amber-700' },
-  'Afternoon': { label: 'Afternoon (12pm-3pm)', color: 'bg-orange-100 text-orange-700' },
-  'Evening': { label: 'Evening (5pm-8pm)', color: 'bg-indigo-100 text-indigo-700' },
-  'Weekend': { label: 'Weekend Special', color: 'bg-rose-100 text-rose-700' }
+  'Morning': { label: 'Morning (6am-9am)', emoji: '🌅', color: 'bg-amber-100 text-amber-700' },
+  'Afternoon': { label: 'Afternoon (12pm-3pm)', emoji: '☀️', color: 'bg-orange-100 text-orange-700' },
+  'Evening': { label: 'Evening (5pm-8pm)', emoji: '🌇', color: 'bg-indigo-100 text-indigo-700' },
+  'Weekend': { label: 'Weekend Special', emoji: '🎉', color: 'bg-rose-100 text-rose-700' }
 };
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+const getMonday = (d) => {
+  d = new Date(d);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(d.setDate(diff));
+};
+
+const getWeekDays = (monday) => {
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+};
+
+const isToday = (someDate) => {
+  const today = new Date();
+  return someDate.getDate() === today.getDate() &&
+    someDate.getMonth() === today.getMonth() &&
+    someDate.getFullYear() === today.getFullYear();
+};
+
+const formatMonthYear = (monday) => {
+  return monday.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+};
+
+const getShortBatchCode = (name) => {
+  if (!name) return 'BCH';
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 4);
+};
+
 const Batches = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [batches, setBatches] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [candidates, setCandidates] = useState([]);
   
   // Batch Form State
   const initialBatchForm = { 
@@ -43,6 +80,16 @@ const Batches = () => {
   };
   const [batchForm, setBatchForm] = useState(initialBatchForm);
   const [conflictWarning, setConflictWarning] = useState(null);
+  
+  // Candidate Selection in Creation Form
+  const [selectedFormCandidateIds, setSelectedFormCandidateIds] = useState(new Set());
+  const [formCandidateSearch, setFormCandidateSearch] = useState('');
+
+  // Filtering Batches
+  const [batchFilter, setBatchFilter] = useState('All');
+
+  // Weekly Grid Calendar Navigation
+  const [calWeekStart, setCalWeekStart] = useState(() => getMonday(new Date()));
 
   // Modals & Other States
   const [showManageModal, setShowManageModal] = useState(false);
@@ -71,6 +118,9 @@ const Batches = () => {
 
       const fetchedVehicles = await window.api.getVehicles();
       setVehicles(fetchedVehicles || []);
+
+      const fetchedCandidates = await window.api.getCandidates();
+      setCandidates(fetchedCandidates || []);
     } catch (err) {
       console.error("Failed to load batches/sessions", err);
     }
@@ -79,6 +129,60 @@ const Batches = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'add') {
+      setBatchForm(initialBatchForm);
+      setSelectedFormCandidateIds(new Set());
+      setFormCandidateSearch('');
+      const input = document.querySelector('input[placeholder="e.g. Morning Theory B"]');
+      if (input) input.focus();
+      navigate('/batches', { replace: true });
+    }
+  }, [location, navigate]);
+
+  const generateBatchName = (slot) => {
+    const prefix = (slot || 'Morning').substring(0, 3).toUpperCase();
+    const year = new Date().getFullYear();
+    const count = batches.filter(b => b.timeSlot === slot).length + 1;
+    return `${prefix}-${year}-${String(count).padStart(2, '0')}`;
+  };
+
+  // Memoized unassigned candidates for manual batch creation
+  const unassignedCandidates = useMemo(() => {
+    const activeBatchCodes = new Set(batches.map(b => b.batchCode));
+    return candidates.filter(c => !c.batchPreference || !activeBatchCodes.has(c.batchPreference));
+  }, [candidates, batches]);
+
+  const filteredFormCandidates = useMemo(() => {
+    return unassignedCandidates.filter(c => 
+      c.name.toLowerCase().includes(formCandidateSearch.toLowerCase()) || 
+      c.nic.toLowerCase().includes(formCandidateSearch.toLowerCase()) ||
+      c.id.toLowerCase().includes(formCandidateSearch.toLowerCase())
+    );
+  }, [unassignedCandidates, formCandidateSearch]);
+
+  const filteredBatches = useMemo(() => {
+    return batches.filter(b => {
+      if (batchFilter === 'All') return true;
+      return b.sessionType === batchFilter;
+    });
+  }, [batches, batchFilter]);
+
+  const weekDays = useMemo(() => getWeekDays(calWeekStart), [calWeekStart]);
+  const weekEnd = useMemo(() => {
+    const end = new Date(calWeekStart);
+    end.setDate(calWeekStart.getDate() + 6);
+    return end;
+  }, [calWeekStart]);
+
+  const isBatchInWeek = (batch) => {
+    if (!batch.startDate || !batch.endDate) return true;
+    const bStart = new Date(batch.startDate);
+    const bEnd = new Date(batch.endDate);
+    return bStart <= weekEnd && bEnd >= calWeekStart;
+  };
 
   // Form Handlers
   const handleSessionTypeChange = (type) => {
@@ -105,7 +209,6 @@ const Batches = () => {
       return;
     }
     
-    // Simple client-side conflict check
     const conflictingBatch = batches.find(b => {
       if (b.id === batchForm.id) return false; // skip self
       if (b.timeSlot !== batchForm.timeSlot) return false;
@@ -126,7 +229,7 @@ const Batches = () => {
     });
 
     if (conflictingBatch) {
-      setConflictWarning(`Conflict detected with batch "${conflictingBatch.name}" (Instructor/Vehicle already booked).`);
+      setConflictWarning(`Conflict! "${conflictingBatch.name}" already schedules Instructor/Vehicle on these days at this slot.`);
     } else {
       setConflictWarning(null);
     }
@@ -149,11 +252,28 @@ const Batches = () => {
     };
 
     if (payload.id) {
-      await window.api.updateBatch(payload);
+      const res = await window.api.updateBatch(payload);
+      if (res.success && selectedFormCandidateIds.size > 0) {
+        const batchObj = batches.find(b => b.id === payload.id);
+        if (batchObj) {
+          await window.api.assignCandidatesToBatch({
+            batchCode: batchObj.batchCode,
+            candidateIds: Array.from(selectedFormCandidateIds)
+          });
+        }
+      }
     } else {
-      await window.api.addBatch(payload);
+      const res = await window.api.addBatch(payload);
+      if (res.success && res.batchCode && selectedFormCandidateIds.size > 0) {
+        await window.api.assignCandidatesToBatch({
+          batchCode: res.batchCode,
+          candidateIds: Array.from(selectedFormCandidateIds)
+        });
+      }
     }
     setBatchForm(initialBatchForm);
+    setSelectedFormCandidateIds(new Set());
+    setFormCandidateSearch('');
     loadData();
   };
 
@@ -168,7 +288,7 @@ const Batches = () => {
       name: batch.name,
       licenseCategory: batch.licenseCategory || 'B - Light Vehicle',
       type: batch.type || 'Weekday',
-      maxCapacity: batch.maxCapacity || 30,
+      maxCapacity: batch.maxCapacity || 15,
       startDate: batch.startDate || '',
       endDate: batch.endDate || '',
       sessionType: batch.sessionType || 'Theory',
@@ -177,6 +297,7 @@ const Batches = () => {
       instructorId: batch.instructorId || '',
       vehicleId: batch.vehicleId || ''
     });
+    setSelectedFormCandidateIds(new Set());
   };
 
   const handleDeleteBatch = async (batchId, batchName) => {
@@ -188,6 +309,8 @@ const Batches = () => {
 
   const handleCancelEdit = () => {
     setBatchForm(initialBatchForm);
+    setSelectedFormCandidateIds(new Set());
+    setFormCandidateSearch('');
   };
 
   // Manage Candidates Logic
@@ -340,7 +463,16 @@ const Batches = () => {
           
           <form onSubmit={handleBatchSubmit} className="p-5 space-y-5">
             <div>
-              <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wide mb-1.5">Batch Name</label>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wide">Batch Name</label>
+                <button 
+                  type="button" 
+                  onClick={() => setBatchForm(prev => ({ ...prev, name: generateBatchName(prev.timeSlot) }))}
+                  className="text-[10px] text-indigo-600 hover:text-indigo-800 font-extrabold flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles size={10} /> Auto-Gen
+                </button>
+              </div>
               <input required type="text" className="w-full px-3 py-2 bg-[#f8fafc] border border-slate-300 rounded-lg text-xs outline-none focus:border-indigo-500 focus:bg-white transition-colors" placeholder="e.g. Morning Theory B" value={batchForm.name} onChange={e => setBatchForm({...batchForm, name: e.target.value})} />
             </div>
 
@@ -370,7 +502,7 @@ const Batches = () => {
                 ))}
               </div>
               <p className="text-[10px] text-slate-500 mt-1.5 font-medium flex items-center gap-1">
-                <AlertCircle size={12}/> Auto-set max capacity: {SESSION_TYPE_CONFIG[batchForm.sessionType]?.max || 30}
+                <AlertCircle size={12}/> Auto-set max capacity: {SESSION_TYPE_CONFIG[batchForm.sessionType]?.max || 15}
               </p>
             </div>
 
@@ -412,10 +544,52 @@ const Batches = () => {
               </div>
               <div>
                 <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wide mb-1.5">Vehicle</label>
-                <select className="w-full px-2 py-2 bg-[#f8fafc] border border-slate-300 rounded-lg text-xs outline-none focus:border-indigo-500" value={batchForm.vehicleId} onChange={e => setBatchForm({...batchForm, vehicleId: e.target.value})}>
+                <select 
+                  className="w-full px-2 py-2 bg-[#f8fafc] border border-slate-300 rounded-lg text-xs outline-none focus:border-indigo-500 disabled:opacity-50" 
+                  value={batchForm.vehicleId} 
+                  onChange={e => setBatchForm({...batchForm, vehicleId: e.target.value})}
+                  disabled={batchForm.sessionType === 'Theory'}
+                >
                   <option value="">-- Unassigned --</option>
                   {vehicles.filter(v => v.status === 'Active').map(v => <option key={v.id} value={v.id}>{v.plateNumber}</option>)}
                 </select>
+              </div>
+            </div>
+
+            {/* Candidates Multi-Select Selection Form */}
+            <div className="pt-2 border-t border-slate-100">
+              <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wide mb-1.5 flex justify-between">
+                <span>Assign Candidates ({selectedFormCandidateIds.size})</span>
+                <span className="text-[10px] text-slate-400 capitalize normal-case font-medium">unassigned candidates</span>
+              </label>
+              <input 
+                type="text" 
+                placeholder="Search candidates..." 
+                value={formCandidateSearch}
+                onChange={e => setFormCandidateSearch(e.target.value)}
+                className="w-full px-2 py-1.5 mb-2 bg-[#f8fafc] border border-slate-300 rounded-lg text-[11px] outline-none focus:border-indigo-500"
+              />
+              <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg p-2 bg-slate-50 space-y-1">
+                {filteredFormCandidates.length === 0 ? (
+                  <div className="text-[10px] text-slate-400 text-center py-2">No unassigned candidates</div>
+                ) : (
+                  filteredFormCandidates.map(c => (
+                    <label key={c.id} className="flex items-center gap-2 p-1 hover:bg-white rounded cursor-pointer transition-colors text-[10px] font-medium text-slate-700">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedFormCandidateIds.has(c.id)} 
+                        onChange={() => {
+                          const next = new Set(selectedFormCandidateIds);
+                          if (next.has(c.id)) next.delete(c.id);
+                          else next.add(c.id);
+                          setSelectedFormCandidateIds(next);
+                        }}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3 h-3"
+                      />
+                      <span className="truncate">{c.name} ({c.nic})</span>
+                    </label>
+                  ))
+                )}
               </div>
             </div>
             
@@ -450,26 +624,43 @@ const Batches = () => {
           
           {/* Top Half: Batch Cards */}
           <div className="h-1/2 overflow-y-auto p-6 shrink-0">
-            <h2 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center gap-2">
-              <List size={16} className="text-indigo-600" />
-              Active Batches Overview
-            </h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+                <List size={16} className="text-indigo-600" />
+                Active Batches Overview
+              </h2>
+              <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                {['All', 'Theory', 'Practical', 'Simulation'].map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setBatchFilter(tab)}
+                    className={`px-3 py-1 rounded-md text-[10px] font-extrabold transition-all cursor-pointer ${
+                      batchFilter === tab 
+                        ? 'bg-white text-slate-800 shadow-xs' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
             
-            {batches.length === 0 ? (
+            {filteredBatches.length === 0 ? (
                <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300">
                  <Users size={32} className="mx-auto text-slate-300 mb-2" />
                  <p className="text-sm font-bold text-slate-500">No active batches created yet.</p>
                </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {batches.map(batch => {
+                {filteredBatches.map(batch => {
                   let days = [];
                   try {
                     if (batch.sessionDays) days = JSON.parse(batch.sessionDays);
                   } catch(e) {}
                   
                   const typeConfig = SESSION_TYPE_CONFIG[batch.sessionType] || SESSION_TYPE_CONFIG['Theory'];
-                  const capacityPercent = Math.min(100, Math.round(((batch.enrolledCount || 0) / (batch.maxCapacity || 1)) * 100));
+                  const capacityPercent = Math.min(100, Math.round(((batch.candidateCount || 0) / (batch.maxCapacity || 1)) * 100));
                   
                   return (
                     <div key={batch.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all flex flex-col">
@@ -494,7 +685,7 @@ const Batches = () => {
                            <div className="w-full bg-slate-200 rounded-full h-1.5 mb-1">
                              <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${capacityPercent}%` }}></div>
                            </div>
-                           <div className="text-[10px] font-bold text-slate-600 text-right">{batch.enrolledCount || 0} / {batch.maxCapacity}</div>
+                           <div className="text-[10px] font-bold text-slate-600 text-right">{batch.candidateCount || 0} / {batch.maxCapacity}</div>
                         </div>
                       </div>
                       
@@ -536,61 +727,102 @@ const Batches = () => {
                   <Grid size={16} className="text-indigo-600" />
                   Weekly Schedule Grid
                 </h2>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      const prev = new Date(calWeekStart);
+                      prev.setDate(prev.getDate() - 7);
+                      setCalWeekStart(prev);
+                    }}
+                    className="px-2 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    Prev Week
+                  </button>
+                  <span className="text-xs font-bold text-slate-700 mx-2">
+                    {formatMonthYear(calWeekStart)}
+                  </span>
+                  <button 
+                    onClick={() => {
+                      setCalWeekStart(getMonday(new Date()));
+                    }}
+                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold cursor-pointer"
+                  >
+                    Today
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const next = new Date(calWeekStart);
+                      next.setDate(next.getDate() + 7);
+                      setCalWeekStart(next);
+                    }}
+                    className="px-2 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    Next Week
+                  </button>
+                </div>
              </div>
              
              <div className="flex-1 overflow-auto p-4 bg-[#f8fafc]">
-               <div className="min-w-[800px] border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-sm">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr>
-                        <th className="p-3 border-b border-r border-[#e2e8f0] bg-slate-50 w-32 font-bold text-xs text-slate-500 uppercase">Time Slot</th>
-                        {WEEKDAYS.map(day => (
-                          <th key={day} className="p-3 border-b border-r border-[#e2e8f0] bg-slate-50 font-bold text-xs text-slate-700 text-center">
-                            {day}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.keys(TIME_SLOT_CONFIG).map(slot => (
-                        <tr key={slot} className="hover:bg-slate-50/50">
-                           <td className="p-3 border-b border-r border-[#e2e8f0] font-extrabold text-[11px] text-slate-600 align-top">
-                             {TIME_SLOT_CONFIG[slot].label}
-                           </td>
-                           {WEEKDAYS.map(day => {
-                             // Find batches for this slot and day
-                             const slotBatches = batches.filter(b => {
-                               if (b.timeSlot !== slot) return false;
-                               try {
-                                 const days = JSON.parse(b.sessionDays || '[]');
-                                 return days.includes(day);
-                               } catch(e) { return false; }
-                             });
-                             
-                             return (
-                               <td key={day} className="p-2 border-b border-r border-[#e2e8f0] align-top min-h-[80px] w-[12.5%]">
-                                 <div className="flex flex-col gap-1.5">
-                                   {slotBatches.map(b => {
-                                      const typeConfig = SESSION_TYPE_CONFIG[b.sessionType] || SESSION_TYPE_CONFIG['Theory'];
-                                      return (
-                                        <div key={b.id} onClick={() => openManageBatch(b)} className={`p-1.5 rounded text-[9px] border ${typeConfig.color} bg-white shadow-xs cursor-pointer hover:ring-2 hover:ring-indigo-300 transition-all`}>
-                                          <div className="font-extrabold truncate">{b.name}</div>
-                                          <div className="flex justify-between items-center mt-1">
-                                            <span className="opacity-80">{b.batchCode}</span>
-                                            {b.instructorId && <UserSquare2 size={10} className="opacity-70" />}
-                                          </div>
-                                        </div>
-                                      );
-                                   })}
-                                 </div>
-                               </td>
-                             )
-                           })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-               </div>
+                <div className="min-w-[800px] border border-[#e2e8f0] rounded-xl overflow-hidden bg-white shadow-sm">
+                   <table className="w-full text-left border-collapse">
+                     <thead>
+                       <tr>
+                         <th className="p-3 border-b border-r border-[#e2e8f0] bg-slate-50 w-32 font-bold text-xs text-slate-500 uppercase">Time Slot</th>
+                         {weekDays.map(date => {
+                           const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+                           const isDayToday = isToday(date);
+                           return (
+                             <th key={date.toString()} className={`p-3 border-b border-r border-[#e2e8f0] font-bold text-xs text-center ${isDayToday ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-50 text-slate-700'}`}>
+                               <div>{dayName}</div>
+                               <div className="text-[10px] font-normal opacity-85 mt-0.5">{date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                             </th>
+                           );
+                         })}
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {Object.keys(TIME_SLOT_CONFIG).map(slot => (
+                         <tr key={slot} className="hover:bg-slate-50/50">
+                            <td className="p-3 border-b border-r border-[#e2e8f0] font-extrabold text-[11px] text-slate-600 align-top">
+                              <span className="mr-1">{TIME_SLOT_CONFIG[slot].emoji}</span>
+                              {TIME_SLOT_CONFIG[slot].label}
+                            </td>
+                            {weekDays.map(date => {
+                              const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+                              // Find batches for this slot and day that are active during this week
+                              const slotBatches = filteredBatches.filter(b => {
+                                if (b.timeSlot !== slot) return false;
+                                if (!isBatchInWeek(b)) return false;
+                                try {
+                                  const days = JSON.parse(b.sessionDays || '[]');
+                                  return days.some(d => d.substring(0, 3).toLowerCase() === dayName.substring(0, 3).toLowerCase());
+                                } catch(e) { return false; }
+                              });
+                              
+                              return (
+                                <td key={date.toString()} className="p-2 border-b border-r border-[#e2e8f0] align-top min-h-[80px] w-[12.5%]">
+                                  <div className="flex flex-col gap-1.5">
+                                    {slotBatches.map(b => {
+                                       const typeConfig = SESSION_TYPE_CONFIG[b.sessionType] || SESSION_TYPE_CONFIG['Theory'];
+                                       return (
+                                         <div key={b.id} onClick={() => openManageBatch(b)} className={`p-1.5 rounded text-[9px] border ${typeConfig.color} bg-white shadow-xs cursor-pointer hover:ring-2 hover:ring-indigo-300 transition-all`}>
+                                           <div className="font-extrabold truncate">{b.name}</div>
+                                           <div className="flex justify-between items-center mt-1">
+                                             <span className="opacity-80">{b.batchCode}</span>
+                                             {b.instructorId && <UserSquare2 size={10} className="opacity-70" />}
+                                           </div>
+                                         </div>
+                                       );
+                                    })}
+                                  </div>
+                                </td>
+                              )
+                            })}
+                         </tr>
+                       ))}
+                     </tbody>
+                   </table>
+                </div>
              </div>
           </div>
         </div>

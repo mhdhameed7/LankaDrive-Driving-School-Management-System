@@ -88,6 +88,7 @@ contextBridge.exposeInMainWorld('api', {
   // Written Exams
   addWrittenExam: (data) => ipcRenderer.invoke('add-written-exam', data),
   getWrittenExams: (candidateId) => ipcRenderer.invoke('get-written-exams', candidateId),
+  updateWrittenExam: (data) => ipcRenderer.invoke('update-written-exam', data),
 
   // Learner Permits
   addLearnerPermit: (data) => ipcRenderer.invoke('add-learner-permit', data),
@@ -96,6 +97,7 @@ contextBridge.exposeInMainWorld('api', {
   // Practical Exams
   addPracticalExam: (data) => ipcRenderer.invoke('add-practical-exam', data),
   getPracticalExams: (candidateId) => ipcRenderer.invoke('get-practical-exams', candidateId),
+  updatePracticalExam: (data) => ipcRenderer.invoke('update-practical-exam', data),
 
   // Training Sessions
   addTrainingSession: (data) => ipcRenderer.invoke('add-training-session', data),
@@ -120,5 +122,28 @@ contextBridge.exposeInMainWorld('api', {
   addStaffAttendance: (data) => ipcRenderer.invoke('add-staff-attendance', data),
   updateStaffAttendance: (data) => ipcRenderer.invoke('update-staff-attendance', data),
   
-  getAttendanceReport: (data) => ipcRenderer.invoke('get-attendance-report', data)
+  getAttendanceReport: (data) => ipcRenderer.invoke('get-attendance-report', data),
+
+  // Payments
+  getPayments: () => ipcRenderer.invoke('get-payments'),
+  addPayment: (data) => ipcRenderer.invoke('add-payment', data),
+  updatePayment: (data) => ipcRenderer.invoke('update-payment', data),
+  deletePayment: (id) => ipcRenderer.invoke('delete-payment', id),
+  getPaymentStats: () => ipcRenderer.invoke('get-payment-stats'),
+  getPaymentBalances: () => ipcRenderer.invoke('get-payment-balances'),
+  getPaymentReports: (data) => ipcRenderer.invoke('get-payment-reports', data),
+  
+  // PDF Printing
+  printToPDF: (options) => ipcRenderer.invoke('print-to-pdf', options),
+
+  // Settings Configuration
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  updateSetting: (data) => ipcRenderer.invoke('update-setting', data),
+  changePassword: (data) => ipcRenderer.invoke('change-password', data),
+
+  // Reminders / Notification Scheduler
+  getReminders: () => ipcRenderer.invoke('get-reminders'),
+  addReminder: (data) => ipcRenderer.invoke('add-reminder', data),
+  deleteReminder: (id) => ipcRenderer.invoke('delete-reminder', id),
+  updateReminderStatus: (data) => ipcRenderer.invoke('update-reminder-status', data),
 });

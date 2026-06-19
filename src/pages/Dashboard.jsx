@@ -18,7 +18,10 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 
+import { useNavigate } from 'react-router-dom';
+
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [candidates, setCandidates] = useState([]);
   const [stats, setStats] = useState({
     totalCandidates: 0,
@@ -85,13 +88,13 @@ const Dashboard = () => {
     <div className="space-y-6 pb-8">
       {/* Quick Actions */}
       <div className="flex gap-4 mb-6">
-        <button className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#152a45] text-white px-4 py-2 rounded-lg shadow-sm transition-all duration-200 hover:-translate-y-0.5">
+        <button onClick={() => navigate('/candidates?action=add')} className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#152a45] text-white px-4 py-2 rounded-lg shadow-sm transition-all duration-200 hover:-translate-y-0.5 cursor-pointer">
           <UserPlus size={18} /> Add Candidate
         </button>
-        <button className="flex items-center gap-2 bg-white border border-gray-200 hover:border-[#f59e0b] hover:text-[#f59e0b] text-gray-700 px-4 py-2 rounded-lg shadow-sm transition-all duration-200 hover:-translate-y-0.5">
+        <button onClick={() => navigate('/batches?action=add')} className="flex items-center gap-2 bg-white border border-gray-200 hover:border-[#f59e0b] hover:text-[#f59e0b] text-gray-700 px-4 py-2 rounded-lg shadow-sm transition-all duration-200 hover:-translate-y-0.5 cursor-pointer">
           <CalendarPlus size={18} /> Schedule Batch
         </button>
-        <button className="flex items-center gap-2 bg-white border border-gray-200 hover:border-[#10b981] hover:text-[#10b981] text-gray-700 px-4 py-2 rounded-lg shadow-sm transition-all duration-200 hover:-translate-y-0.5">
+        <button onClick={() => navigate('/payments?action=add')} className="flex items-center gap-2 bg-white border border-gray-200 hover:border-[#10b981] hover:text-[#10b981] text-gray-700 px-4 py-2 rounded-lg shadow-sm transition-all duration-200 hover:-translate-y-0.5 cursor-pointer">
           <Receipt size={18} /> Record Payment
         </button>
       </div>
