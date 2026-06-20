@@ -1,16 +1,83 @@
-# React + Vite
+# LankaDrive - Driving School Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Overview
 
-Currently, two official plugins are available:
+LankaDrive is an offline desktop application developed for Sri Lankan driving schools. The system helps manage candidate registration, admissions, batch scheduling, instructor allocation, vehicle management, attendance, payments, examinations, and reports from a single platform.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+* Candidate Management
+* Admission Management
+* Batch Scheduling
+* Instructor Management
+* Vehicle Management
+* Attendance Management
+* Payment Management
+* Examination Management
+* Report Generation
+* Notification & Messaging
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Technologies Used
 
-## Expanding the ESLint configuration
+* Electron
+* React
+* SQLite
+* JavaScript
+* HTML
+* CSS
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## User Roles
+
+### Administrator
+
+* Manage candidates
+* Manage instructors
+* Manage vehicles
+* Manage payments
+* Manage examinations
+* Generate reports
+
+### Office Staff
+
+* Register candidates
+* Process admissions
+* Record payments
+* Manage documentation
+
+### Instructor
+
+* View assigned batches
+* View candidate details
+* Monitor training activities
+
+## Installation
+
+1. Clone the repository
+
+```bash
+git clone https://github.com/mhdhameed7/LankaDrive-Driving-School-Management-System.git
+```
+
+2. Install dependencies
+
+```bash
+npm install
+```
+
+3. Run the application
+
+```bash
+npm start
+```
+
+## Database
+
+SQLite is used as the local offline database.
+
+## Project Type
+
+Final Year Project – Higher National Diploma in Information Technology (HNDIT)
+
+## Author
+
+Mohamed Hameed
